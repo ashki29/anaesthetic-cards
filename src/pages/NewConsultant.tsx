@@ -15,13 +15,16 @@ export default function NewConsultant() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!team) return
+    if (!team) {
+      setError('Team not loaded yet. Try refreshing the page.')
+      return
+    }
 
     setLoading(true)
     setError('')
 
     try {
-      const { data, error: insertError } = await supabase
+      const insertPromise = supabase
         .from('consultants')
         .insert({
           team_id: team.id,
@@ -32,8 +35,28 @@ export default function NewConsultant() {
         .select('id')
         .single()
 
+      const timeoutMs = 15000
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs / 1000}s. Please try again.`)), timeoutMs)
+      })
+
+      const { data, error: insertError } = await Promise.race([
+        insertPromise,
+        timeoutPromise,
+      ])
+
       if (insertError) {
-        setError(insertError.message)
+        const lower = insertError.message.toLowerCase()
+        const looksLikeNotFound =
+          lower.includes('schema cache') ||
+          lower.includes('not found') ||
+          lower.includes('could not find')
+
+        const message = looksLikeNotFound
+          ? `${insertError.message} If you’re seeing a 404 in the browser Network tab, this usually means PostgREST can’t see the table (schema not applied) or the Supabase URL is wrong.`
+          : insertError.message
+
+        setError(message)
         return
       }
 
