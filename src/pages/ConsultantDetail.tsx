@@ -21,6 +21,11 @@ export default function ConsultantDetail() {
   }, [id])
 
   const loadConsultant = async () => {
+    if (!id) {
+      setLoading(false)
+      return
+    }
+
     const { data: consultantData } = await supabase
       .from('consultants')
       .select('*')
@@ -47,6 +52,8 @@ export default function ConsultantDetail() {
   }
 
   const handleSave = async () => {
+    if (!id) return
+
     const { error } = await supabase
       .from('consultants')
       .update({ name, specialty, notes: notes || null })
@@ -60,6 +67,8 @@ export default function ConsultantDetail() {
 
   const handleDelete = async () => {
     if (!confirm('Delete this consultant and all their preference cards?')) return
+
+    if (!id) return
 
     const { error } = await supabase
       .from('consultants')

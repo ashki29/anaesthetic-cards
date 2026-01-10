@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -19,22 +20,36 @@ export default function NewConsultant() {
     setLoading(true)
     setError('')
 
-    const { data, error: insertError } = await supabase
-      .from('consultants')
-      .insert({
-        team_id: team.id,
-        name,
-        specialty,
-        notes: notes || null,
-      })
-      .select()
-      .single()
+    try {
+      const { data, error: insertError } = await supabase
+        .from('consultants')
+        .insert({
+          team_id: team.id,
+          name,
+          specialty,
+          notes: notes || null,
+        })
+        .select('id')
+        .single()
 
-    if (insertError) {
-      setError(insertError.message)
+      if (insertError) {
+        setError(insertError.message)
+        return
+      }
+
+      const newId = (data as { id?: string } | null)?.id
+      if (!newId) {
+        setError(
+          'Consultant may have been created, but the app could not read it back. This is usually an RLS policy issue. Try refreshing and checking the Consultants list.'
+        )
+        return
+      }
+
+      navigate(`/consultant/${newId}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unexpected error')
+    } finally {
       setLoading(false)
-    } else if (data) {
-      navigate(`/consultant/${data.id}`)
     }
   }
 

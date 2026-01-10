@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { Session, User as SupabaseUser } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { User, Team } from '../lib/types'
 
@@ -9,6 +10,7 @@ interface AuthContextType {
   profile: User | null
   team: Team | null
   loading: boolean
+  initError: string | null
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<User | null>(null)
   const [team, setTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initError, setInitError] = useState<string | null>(null)
 
   const fetchProfile = async (userId: string) => {
     const { data: profileData } = await supabase
@@ -57,17 +60,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      }
-      setLoading(false)
-    })
+    let cancelled = false
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    // Fail-safe so the UI doesn't sit on "Loading..." forever if Supabase is unreachable.
+    const timeoutId = window.setTimeout(() => {
+      if (cancelled) return
+      setInitError('Timed out connecting to Supabase. Check your network and Supabase URL/key.')
+      setLoading(false)
+    }, 10_000)
+
+    ;(async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (cancelled) return
+
+        if (error) {
+          setInitError(error.message)
+        } else {
+          setInitError(null)
+        }
+
+        const session = data.session
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        }
+      } catch (err) {
+        if (cancelled) return
+        setInitError(err instanceof Error ? err.message : 'Failed to initialize auth')
+      } finally {
+        window.clearTimeout(timeoutId)
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    })()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      try {
+        if (cancelled) return
+        setInitError(null)
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
@@ -76,11 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null)
           setTeam(null)
         }
-        setLoading(false)
+      } catch (err) {
+        if (cancelled) return
+        setInitError(err instanceof Error ? err.message : 'Auth state update failed')
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
-    )
+    })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email: string, password: string) => {
@@ -106,6 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const joinTeam = async (inviteCode: string) => {
+    if (!user?.id) {
+      return { error: new Error('You must be signed in to join a team') }
+    }
+
     const { data: teamData, error: teamError } = await supabase
       .from('teams')
       .select('id')
@@ -119,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error: updateError } = await supabase
       .from('users')
       .update({ team_id: teamData.id })
-      .eq('id', user?.id)
+      .eq('id', user.id)
 
     if (updateError) {
       return { error: updateError as Error }
@@ -130,6 +179,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const createTeam = async (name: string) => {
+    if (!user?.id) {
+      return { error: new Error('You must be signed in to create a team') }
+    }
+
     const inviteCode = generateInviteCode()
 
     const { data: teamData, error: teamError } = await supabase
@@ -145,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error: updateError } = await supabase
       .from('users')
       .update({ team_id: teamData.id })
-      .eq('id', user?.id)
+      .eq('id', user.id)
 
     if (updateError) {
       return { error: updateError as Error }
@@ -161,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     team,
     loading,
+    initError,
     signIn,
     signUp,
     signOut,

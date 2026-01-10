@@ -1,8 +1,9 @@
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import type { PreferenceCard, Consultant, DrugPreferences, EquipmentPreferences, PositioningPreferences } from '../lib/types'
+import type { Consultant, DrugPreferences, EquipmentPreferences, PositioningPreferences } from '../lib/types'
 
 export default function CardEdit() {
   const { id } = useParams<{ id: string }>()
@@ -68,6 +69,11 @@ export default function CardEdit() {
   }
 
   const loadCard = async () => {
+    if (!id) {
+      setLoading(false)
+      return
+    }
+
     const { data: cardData } = await supabase
       .from('preference_cards')
       .select('*')
@@ -172,6 +178,11 @@ export default function CardEdit() {
         navigate(`/card/${data.id}`)
       }
     } else {
+      if (!id) {
+        setError('Missing card id')
+        setSaving(false)
+        return
+      }
       const { error: updateError } = await supabase
         .from('preference_cards')
         .update(cardData)

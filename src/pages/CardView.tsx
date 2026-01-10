@@ -18,6 +18,11 @@ export default function CardView() {
   }, [id])
 
   const loadCard = async () => {
+    if (!id) {
+      setLoading(false)
+      return
+    }
+
     const { data: cardData } = await supabase
       .from('preference_cards')
       .select('*')
@@ -54,6 +59,8 @@ export default function CardView() {
 
   const handleDelete = async () => {
     if (!confirm('Delete this preference card?')) return
+
+    if (!id) return
 
     const { error } = await supabase
       .from('preference_cards')

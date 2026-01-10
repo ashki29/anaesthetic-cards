@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useLocation, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -7,13 +7,20 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { profile, team, signOut, loading } = useAuth()
+  const { profile, team, signOut, loading, initError } = useAuth()
   const location = useLocation()
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-500">Loading...</div>
+        <div className="text-slate-500">
+          <div>Loading...</div>
+          {initError && (
+            <div className="mt-2 text-sm text-red-600 max-w-md">
+              {initError}
+            </div>
+          )}
+        </div>
       </div>
     )
   }

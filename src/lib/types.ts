@@ -1,11 +1,19 @@
-export interface Team {
+export type Team = {
   id: string
   name: string
   invite_code: string
   created_at: string
 }
 
-export interface User {
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type User = {
   id: string
   email: string
   display_name: string
@@ -13,7 +21,7 @@ export interface User {
   created_at: string
 }
 
-export interface Consultant {
+export type Consultant = {
   id: string
   team_id: string
   name: string
@@ -49,7 +57,7 @@ export interface PositioningPreferences {
   other?: string
 }
 
-export interface PreferenceCard {
+export type PreferenceCard = {
   id: string
   consultant_id: string
   procedure_name: string
@@ -63,12 +71,12 @@ export interface PreferenceCard {
   created_at: string
 }
 
-export interface PreferenceCardWithConsultant extends PreferenceCard {
+export type PreferenceCardWithConsultant = PreferenceCard & {
   consultant: Consultant
   editor?: User
 }
 
-export interface ConsultantWithCards extends Consultant {
+export type ConsultantWithCards = Consultant & {
   preference_cards: PreferenceCard[]
 }
 
@@ -79,22 +87,57 @@ export type Database = {
         Row: Team
         Insert: Omit<Team, 'id' | 'created_at'>
         Update: Partial<Omit<Team, 'id' | 'created_at'>>
+        Relationships: []
       }
       users: {
         Row: User
         Insert: Omit<User, 'created_at'>
         Update: Partial<Omit<User, 'id' | 'created_at'>>
+        Relationships: [
+          {
+            foreignKeyName: 'users_team_id_fkey'
+            columns: ['team_id']
+            referencedRelation: 'teams'
+            referencedColumns: ['id']
+          }
+        ]
       }
       consultants: {
         Row: Consultant
         Insert: Omit<Consultant, 'id' | 'created_at'>
         Update: Partial<Omit<Consultant, 'id' | 'created_at'>>
+        Relationships: [
+          {
+            foreignKeyName: 'consultants_team_id_fkey'
+            columns: ['team_id']
+            referencedRelation: 'teams'
+            referencedColumns: ['id']
+          }
+        ]
       }
       preference_cards: {
         Row: PreferenceCard
         Insert: Omit<PreferenceCard, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<PreferenceCard, 'id' | 'created_at'>>
+        Relationships: [
+          {
+            foreignKeyName: 'preference_cards_consultant_id_fkey'
+            columns: ['consultant_id']
+            referencedRelation: 'consultants'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'preference_cards_last_edited_by_fkey'
+            columns: ['last_edited_by']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
       }
     }
+    Views: { [K in never]: never }
+    Functions: { [K in never]: never }
+    Enums: { [K in never]: never }
+    CompositeTypes: { [K in never]: never }
   }
 }
