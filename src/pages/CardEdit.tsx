@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -47,15 +47,7 @@ export default function CardEdit() {
   const [ngt, setNgt] = useState('')
   const [positioningOther, setPositioningOther] = useState('')
 
-  useEffect(() => {
-    if (isNew && consultantId) {
-      loadConsultant(consultantId)
-    } else if (id) {
-      loadCard()
-    }
-  }, [id, consultantId])
-
-  const loadConsultant = async (cId: string) => {
+  const loadConsultant = useCallback(async (cId: string) => {
     const { data } = await supabase
       .from('consultants')
       .select('*')
@@ -66,9 +58,9 @@ export default function CardEdit() {
       setConsultant(data)
     }
     setLoading(false)
-  }
+  }, [])
 
-  const loadCard = async () => {
+  const loadCard = useCallback(async () => {
     if (!id) {
       setLoading(false)
       return
@@ -120,7 +112,16 @@ export default function CardEdit() {
       }
     }
     setLoading(false)
-  }
+  }, [id])
+
+  useEffect(() => {
+    if (isNew && consultantId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadConsultant(consultantId)
+    } else if (id) {
+      void loadCard()
+    }
+  }, [id, consultantId, isNew, loadConsultant, loadCard])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

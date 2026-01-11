@@ -1,28 +1,51 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import type { Consultant } from '../lib/types'
 
 export default function Consultants() {
+  const { team } = useAuth()
   const [consultants, setConsultants] = useState<Consultant[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
+  const [error, setError] = useState<string>('')
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   useEffect(() => {
-    loadConsultants()
-  }, [])
+    let alive = true
 
-  const loadConsultants = async () => {
-    const { data, error } = await supabase
-      .from('consultants')
-      .select('*')
-      .order('name')
+    const run = async () => {
+      if (!team?.id) return
+      setLoading(true)
+      setError('')
+      try {
+        const { data, error } = await supabase
+          .from('consultants')
+          .select('*')
+          .eq('team_id', team.id)
+          .order('name')
 
-    if (data && !error) {
-      setConsultants(data)
+        if (!alive) return
+
+        if (error) {
+          setError(error.message)
+          return
+        }
+        setConsultants(data ?? [])
+      } catch (err) {
+        if (!alive) return
+        setError(err instanceof Error ? err.message : 'Failed to load consultants')
+      } finally {
+        if (alive) setLoading(false)
+      }
     }
-    setLoading(false)
-  }
+
+    void run()
+    return () => {
+      alive = false
+    }
+  }, [team?.id, reloadNonce])
 
   const specialties = [...new Set(consultants.map(c => c.specialty).filter(Boolean))]
 
@@ -33,6 +56,21 @@ export default function Consultants() {
   if (loading) {
     return (
       <div className="text-center py-12 text-slate-500">Loading consultants...</div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="card text-center py-12">
+        <p className="text-slate-700 font-medium">Couldn’t load consultants</p>
+        <p className="text-sm text-red-600 mt-2 break-words">{error}</p>
+        <button
+          onClick={() => setReloadNonce((n) => n + 1)}
+          className="btn btn-primary mt-6"
+        >
+          Retry
+        </button>
+      </div>
     )
   }
 

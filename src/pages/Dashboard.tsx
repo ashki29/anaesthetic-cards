@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Consultant, PreferenceCard } from '../lib/types'
@@ -15,20 +15,7 @@ export default function Dashboard() {
   const [recentConsultants, setRecentConsultants] = useState<Consultant[]>([])
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    loadRecentConsultants()
-  }, [])
-
-  useEffect(() => {
-    if (query.trim()) {
-      const timer = setTimeout(() => search(query), 300)
-      return () => clearTimeout(timer)
-    } else {
-      setResults([])
-    }
-  }, [query])
-
-  const loadRecentConsultants = async () => {
+  const loadRecentConsultants = useCallback(async () => {
     const { data } = await supabase
       .from('consultants')
       .select('*')
@@ -38,9 +25,9 @@ export default function Dashboard() {
     if (data) {
       setRecentConsultants(data)
     }
-  }
+  }, [])
 
-  const search = async (searchQuery: string) => {
+  const search = useCallback(async (searchQuery: string) => {
     setLoading(true)
     const searchResults: SearchResult[] = []
 
@@ -72,7 +59,24 @@ export default function Dashboard() {
 
     setResults(searchResults)
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadRecentConsultants()
+  }, [loadRecentConsultants])
+
+  useEffect(() => {
+    if (query.trim()) {
+      const timer = setTimeout(() => {
+        void search(query)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+    // Clearing results when query is empty is safe and intentional
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setResults([])
+  }, [query, search])
 
   return (
     <div>

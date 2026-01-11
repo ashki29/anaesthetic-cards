@@ -6,7 +6,11 @@ export default function Settings() {
   const [showInviteCode, setShowInviteCode] = useState(false)
 
   if (!profile || !team) {
-    return null
+    return (
+      <div className="text-center py-12 text-slate-500">
+        Loading settings...
+      </div>
+    )
   }
 
   return (

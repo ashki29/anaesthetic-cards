@@ -41,11 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 10_000)
 
     try {
-      // Clear any stale state while we refetch.
       if (profileFetchIdRef.current !== fetchId) return
       setInitError(null)
-      setProfile(null)
-      setTeam(null)
 
       const { data: profileData, error: profileError } = await supabase
         .from('users')
@@ -90,8 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       if (profileFetchIdRef.current !== fetchId) return
       setInitError(err instanceof Error ? err.message : 'Failed to fetch profile')
-      setProfile(null)
-      setTeam(null)
     } finally {
       window.clearTimeout(timeoutId)
     }
@@ -146,26 +141,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         if (cancelled) return
-        setLoading(true)
-        setInitError(null)
+        // Avoid showing a full-screen loading state for token refreshes.
+        // These events can happen during normal navigation and otherwise feel like the app “freezes”.
         setSession(session)
         setUser(session?.user ?? null)
-        if (session?.user) {
-          void fetchProfile(session.user.id)
-        } else {
+        if (!session?.user) {
+          setInitError(null)
           setProfile(null)
           setTeam(null)
+          return
+        }
+
+        // Only refetch profile/team when it’s likely to have changed.
+        // (Token refreshes shouldn’t block navigation.)
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          setInitError(null)
+          void fetchProfile(session.user.id)
         }
       } catch (err) {
         if (cancelled) return
         setInitError(err instanceof Error ? err.message : 'Auth state update failed')
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
       }
     })
 

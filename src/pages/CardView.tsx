@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { PreferenceCard, Consultant, User } from '../lib/types'
@@ -11,13 +11,7 @@ export default function CardView() {
   const [editor, setEditor] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (id) {
-      loadCard()
-    }
-  }, [id])
-
-  const loadCard = async () => {
+  const loadCard = useCallback(async () => {
     if (!id) {
       setLoading(false)
       return
@@ -55,7 +49,12 @@ export default function CardView() {
       }
     }
     setLoading(false)
-  }
+  }, [id])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadCard()
+  }, [loadCard])
 
   const handleDelete = async () => {
     if (!confirm('Delete this preference card?')) return

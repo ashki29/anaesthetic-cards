@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Consultant, PreferenceCard } from '../lib/types'
@@ -14,13 +14,7 @@ export default function ConsultantDetail() {
   const [specialty, setSpecialty] = useState('')
   const [notes, setNotes] = useState('')
 
-  useEffect(() => {
-    if (id) {
-      loadConsultant()
-    }
-  }, [id])
-
-  const loadConsultant = async () => {
+  const loadConsultant = useCallback(async () => {
     if (!id) {
       setLoading(false)
       return
@@ -49,7 +43,12 @@ export default function ConsultantDetail() {
       }
     }
     setLoading(false)
-  }
+  }, [id])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadConsultant()
+  }, [loadConsultant])
 
   const handleSave = async () => {
     if (!id) return
