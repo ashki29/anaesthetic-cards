@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -29,10 +29,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [team, setTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
   const [initError, setInitError] = useState<string | null>(null)
+  const profileFetchIdRef = useRef(0)
 
   const fetchProfile = async (userId: string) => {
+    const fetchId = ++profileFetchIdRef.current
+
+    // Separate timeout for profile/team loading so we don't blame auth init.
+    const timeoutId = window.setTimeout(() => {
+      if (profileFetchIdRef.current !== fetchId) return
+      setInitError('Timed out loading your account data from Supabase. Please try again.')
+    }, 10_000)
+
     try {
       // Clear any stale state while we refetch.
+      if (profileFetchIdRef.current !== fetchId) return
       setInitError(null)
       setProfile(null)
       setTeam(null)
@@ -42,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('id', userId)
         .single()
+
+      if (profileFetchIdRef.current !== fetchId) return
 
       if (profileError) {
         setInitError(profileError.message)
@@ -66,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', profileData.team_id)
         .single()
 
+      if (profileFetchIdRef.current !== fetchId) return
+
       if (teamError) {
         setInitError(teamError.message)
         setTeam(null)
@@ -74,9 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setTeam(teamData ?? null)
     } catch (err) {
+      if (profileFetchIdRef.current !== fetchId) return
       setInitError(err instanceof Error ? err.message : 'Failed to fetch profile')
       setProfile(null)
       setTeam(null)
+    } finally {
+      window.clearTimeout(timeoutId)
     }
   }
 
@@ -89,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    // Fail-safe so the UI doesn't sit on "Loading..." forever if Supabase is unreachable.
+    // Fail-safe so the UI doesn't sit on "Loading..." forever if auth init is unreachable.
     const timeoutId = window.setTimeout(() => {
       if (cancelled) return
       setInitError('Timed out connecting to Supabase. Check your network and Supabase URL/key.')
@@ -111,7 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          void fetchProfile(session.user.id)
+        } else {
+          setProfile(null)
+          setTeam(null)
         }
       } catch (err) {
         if (cancelled) return
@@ -134,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          void fetchProfile(session.user.id)
         } else {
           setProfile(null)
           setTeam(null)
