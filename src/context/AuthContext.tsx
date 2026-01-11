@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
@@ -30,26 +31,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initError, setInitError] = useState<string | null>(null)
 
   const fetchProfile = async (userId: string) => {
-    const { data: profileData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      // Clear any stale state while we refetch.
+      setInitError(null)
+      setProfile(null)
+      setTeam(null)
 
-    if (profileData) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (profileError) {
+        setInitError(profileError.message)
+        return
+      }
+
+      if (!profileData) {
+        setInitError('No user profile found. Please contact support or try signing out and back in.')
+        return
+      }
+
       setProfile(profileData)
 
-      if (profileData.team_id) {
-        const { data: teamData } = await supabase
-          .from('teams')
-          .select('*')
-          .eq('id', profileData.team_id)
-          .single()
-
-        if (teamData) {
-          setTeam(teamData)
-        }
+      if (!profileData.team_id) {
+        setTeam(null)
+        return
       }
+
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', profileData.team_id)
+        .single()
+
+      if (teamError) {
+        setInitError(teamError.message)
+        setTeam(null)
+        return
+      }
+
+      setTeam(teamData ?? null)
+    } catch (err) {
+      setInitError(err instanceof Error ? err.message : 'Failed to fetch profile')
+      setProfile(null)
+      setTeam(null)
     }
   }
 
@@ -102,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         if (cancelled) return
+        setLoading(true)
         setInitError(null)
         setSession(session)
         setUser(session?.user ?? null)

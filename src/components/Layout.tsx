@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -7,8 +8,9 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { profile, team, signOut, loading, initError } = useAuth()
+  const { user, profile, team, signOut, loading, initError, refreshProfile } = useAuth()
   const location = useLocation()
+  const [signingOut, setSigningOut] = useState(false)
 
   if (loading) {
     return (
@@ -25,12 +27,104 @@ export function Layout({ children }: LayoutProps) {
     )
   }
 
-  if (!profile) {
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (!team) {
+  if (initError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <h1 className="text-xl font-semibold text-slate-900">Something went wrong</h1>
+          <p className="mt-2 text-sm text-red-600 break-words">{initError}</p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="btn btn-primary"
+            >
+              Reload
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  setSigningOut(true)
+                  await signOut()
+                } finally {
+                  setSigningOut(false)
+                }
+              }}
+              disabled={signingOut}
+              className="btn btn-secondary"
+            >
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // User is authenticated, but profile/team may still be loading or missing.
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center text-slate-600">
+          <div className="text-slate-900 font-semibold">Loading your account…</div>
+          <p className="mt-2 text-sm">If this doesn't resolve, try reloading or signing out.</p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={() => refreshProfile()}
+              className="btn btn-primary"
+            >
+              Retry
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  setSigningOut(true)
+                  await signOut()
+                } finally {
+                  setSigningOut(false)
+                }
+              }}
+              disabled={signingOut}
+              className="btn btn-secondary"
+            >
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile.team_id) {
     return <Navigate to="/register" state={{ from: location }} replace />
+  }
+
+  if (!team) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center text-slate-600">
+          <div className="text-slate-900 font-semibold">Loading your team…</div>
+          <p className="mt-2 text-sm">If this doesn't resolve, try reloading.</p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={() => refreshProfile()}
+              className="btn btn-primary"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn btn-secondary"
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const isActive = (path: string) => location.pathname === path
@@ -49,10 +143,18 @@ export function Layout({ children }: LayoutProps) {
                 {team.name}
               </span>
               <button
-                onClick={signOut}
+                onClick={async () => {
+                  try {
+                    setSigningOut(true)
+                    await signOut()
+                  } finally {
+                    setSigningOut(false)
+                  }
+                }}
+                disabled={signingOut}
                 className="text-sm text-slate-500 hover:text-slate-700"
               >
-                Sign out
+                {signingOut ? 'Signing out…' : 'Sign out'}
               </button>
             </div>
           </div>
