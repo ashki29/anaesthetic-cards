@@ -76,6 +76,22 @@ export type PreferenceCardWithConsultant = PreferenceCard & {
   editor?: User
 }
 
+export type Notice = {
+  id: string
+  team_id: string
+  author_id: string
+  content: string
+  images: string[]
+  is_pinned: boolean
+  is_archived: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type NoticeWithAuthor = Notice & {
+  author: User
+}
+
 export type ConsultantWithCards = Consultant & {
   preference_cards: PreferenceCard[]
 }
@@ -129,6 +145,25 @@ export type Database = {
           {
             foreignKeyName: 'preference_cards_last_edited_by_fkey'
             columns: ['last_edited_by']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      notices: {
+        Row: Notice
+        Insert: Omit<Notice, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Notice, 'id' | 'created_at'>>
+        Relationships: [
+          {
+            foreignKeyName: 'notices_team_id_fkey'
+            columns: ['team_id']
+            referencedRelation: 'teams'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notices_author_id_fkey'
+            columns: ['author_id']
             referencedRelation: 'users'
             referencedColumns: ['id']
           }

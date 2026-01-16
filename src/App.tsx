@@ -10,6 +10,7 @@ import NewConsultant from './pages/NewConsultant'
 import CardView from './pages/CardView'
 import CardEdit from './pages/CardEdit'
 import Settings from './pages/Settings'
+import Notices from './pages/Notices'
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           {/* Protected routes */}
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/notices" element={<Notices />} />
             <Route path="/consultants" element={<Consultants />} />
             <Route path="/consultant/new" element={<NewConsultant />} />
             <Route path="/consultant/:id" element={<ConsultantDetail />} />
