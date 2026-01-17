@@ -24,7 +24,7 @@ export default function NoticeComposer({
   const { profile, team } = useAuth()
   const [content, setContent] = useState(editingNotice?.content || '')
   const [images, setImages] = useState<ImagePreview[]>(
-    editingNotice?.images.map((url) => ({ url, isExisting: true })) || []
+    () => editingNotice?.images?.map((url) => ({ url, isExisting: true })) ?? []
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -119,9 +119,8 @@ export default function NoticeComposer({
 
       if (isEditing) {
         // Find images that were removed and delete from storage
-        const removedUrls = editingNotice.images.filter(
-          (url) => !imageUrls.includes(url)
-        )
+        const originalImages = editingNotice?.images ?? []
+        const removedUrls = originalImages.filter((url) => !imageUrls.includes(url))
         if (removedUrls.length > 0) {
           const paths = removedUrls
             .map((url) => {

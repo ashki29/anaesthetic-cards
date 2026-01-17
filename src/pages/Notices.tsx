@@ -1,13 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import type { Notice, User } from '../lib/types'
+import type { NoticeWithAuthor } from '../lib/types'
 import NoticeCard from '../components/NoticeCard'
 import NoticeComposer from '../components/NoticeComposer'
-
-export type NoticeWithAuthor = Notice & {
-  author: User
-}
 
 export default function Notices() {
   const { profile, team } = useAuth()
@@ -16,7 +12,11 @@ export default function Notices() {
   const [showArchived, setShowArchived] = useState(false)
 
   const loadNotices = useCallback(async () => {
-    if (!team) return
+    if (!team) {
+      setNotices([])
+      setLoading(false)
+      return
+    }
 
     setLoading(true)
     const { data, error } = await supabase
@@ -35,6 +35,7 @@ export default function Notices() {
   }, [team])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotices()
   }, [loadNotices])
 

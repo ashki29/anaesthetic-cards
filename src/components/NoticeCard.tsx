@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { NoticeWithAuthor } from '../pages/Notices'
+import type { NoticeWithAuthor } from '../lib/types'
 import NoticeComposer from './NoticeComposer'
 import ImageLightbox from './ImageLightbox'
 
@@ -47,14 +47,22 @@ export default function NoticeCard({
   const [actionLoading, setActionLoading] = useState(false)
 
   const isAuthor = currentUserId === notice.author_id
-  const canPin = !notice.is_pinned || pinnedCount <= 3
+  const canPin = notice.is_pinned || pinnedCount < 3
+  const images = notice.images ?? []
 
   const handlePin = async () => {
     if (notice.is_pinned) {
       // Unpin
       setActionLoading(true)
-      await supabase.from('notices').update({ is_pinned: false }).eq('id', notice.id)
+      const { error } = await supabase
+        .from('notices')
+        .update({ is_pinned: false })
+        .eq('id', notice.id)
       setActionLoading(false)
+      if (error) {
+        alert(error.message)
+        return
+      }
       onUpdate()
     } else {
       // Check pin limit
@@ -63,8 +71,15 @@ export default function NoticeCard({
         return
       }
       setActionLoading(true)
-      await supabase.from('notices').update({ is_pinned: true }).eq('id', notice.id)
+      const { error } = await supabase
+        .from('notices')
+        .update({ is_pinned: true })
+        .eq('id', notice.id)
       setActionLoading(false)
+      if (error) {
+        alert(error.message)
+        return
+      }
       onUpdate()
     }
     setShowMenu(false)
@@ -72,11 +87,15 @@ export default function NoticeCard({
 
   const handleArchive = async () => {
     setActionLoading(true)
-    await supabase
+    const { error } = await supabase
       .from('notices')
       .update({ is_archived: !notice.is_archived, is_pinned: false })
       .eq('id', notice.id)
     setActionLoading(false)
+    if (error) {
+      alert(error.message)
+      return
+    }
     setShowMenu(false)
     onUpdate()
   }
@@ -84,8 +103,8 @@ export default function NoticeCard({
   const handleDelete = async () => {
     setDeleting(true)
     // Delete images from storage
-    if (notice.images.length > 0) {
-      const paths = notice.images.map((url) => {
+    if (images.length > 0) {
+      const paths = images.map((url) => {
         const match = url.match(/notice-images\/(.+)$/)
         return match ? match[1] : null
       }).filter(Boolean) as string[]
@@ -94,9 +113,13 @@ export default function NoticeCard({
         await supabase.storage.from('notice-images').remove(paths)
       }
     }
-    await supabase.from('notices').delete().eq('id', notice.id)
+    const { error } = await supabase.from('notices').delete().eq('id', notice.id)
     setDeleting(false)
     setConfirmDelete(false)
+    if (error) {
+      alert(error.message)
+      return
+    }
     onDelete()
   }
 
@@ -206,17 +229,17 @@ export default function NoticeCard({
       <div className="whitespace-pre-wrap text-slate-800 mb-3">{notice.content}</div>
 
       {/* Images */}
-      {notice.images.length > 0 && (
+      {images.length > 0 && (
         <div
           className={`grid gap-2 ${
-            notice.images.length === 1
+            images.length === 1
               ? 'grid-cols-1'
-              : notice.images.length === 2
+              : images.length === 2
               ? 'grid-cols-2'
               : 'grid-cols-2 sm:grid-cols-3'
           }`}
         >
-          {notice.images.map((url, index) => (
+          {images.map((url, index) => (
             <button
               key={url}
               onClick={() => setLightboxIndex(index)}
@@ -236,7 +259,7 @@ export default function NoticeCard({
       {/* Lightbox */}
       {lightboxIndex !== null && (
         <ImageLightbox
-          images={notice.images}
+          images={images}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
