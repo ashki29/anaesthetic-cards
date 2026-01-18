@@ -37,6 +37,7 @@ export interface DrugPreferences {
   infusions?: string[]
   analgesics?: string
   antiemetics?: string
+  antibiotics?: string
   other?: string
 }
 
@@ -57,6 +58,10 @@ export interface PositioningPreferences {
   other?: string
 }
 
+export interface RegionalPreferences {
+  details?: string
+}
+
 export type PreferenceCard = {
   id: string
   consultant_id: string
@@ -65,6 +70,7 @@ export type PreferenceCard = {
   drugs: DrugPreferences
   equipment: EquipmentPreferences
   positioning: PositioningPreferences
+  regional: RegionalPreferences
   notes: string | null
   last_edited_by: string | null
   updated_at: string

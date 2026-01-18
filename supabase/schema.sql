@@ -40,6 +40,7 @@ create table if not exists public.preference_cards (
   drugs jsonb default '{}'::jsonb not null,
   equipment jsonb default '{}'::jsonb not null,
   positioning jsonb default '{}'::jsonb not null,
+  regional jsonb default '{}'::jsonb not null,
   notes text,
   last_edited_by uuid references public.users on delete set null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,

@@ -89,6 +89,7 @@ export default function CardView() {
   const drugs = card.drugs || {}
   const equipment = card.equipment || {}
   const positioning = card.positioning || {}
+  const regional = card.regional || {}
 
   return (
     <div>
@@ -129,6 +130,7 @@ export default function CardView() {
         <Field label="Infusions" value={drugs.infusions?.join(', ')} />
         <Field label="Analgesics" value={drugs.analgesics} />
         <Field label="Antiemetics" value={drugs.antiemetics} />
+        <Field label="Antibiotics" value={drugs.antibiotics} />
         <Field label="Other" value={drugs.other} />
       </Section>
 
@@ -149,6 +151,11 @@ export default function CardView() {
         <Field label="Catheter" value={positioning.catheter} />
         <Field label="NGT" value={positioning.ngt} />
         <Field label="Other" value={positioning.other} />
+      </Section>
+
+      {/* Regional anaesthesia section */}
+      <Section title="Regional Anaesthesia" icon="🧩">
+        <Field label="Plan / Block" value={regional.details} />
       </Section>
 
       {/* Notes section */}

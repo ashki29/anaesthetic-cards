@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import type { Consultant, DrugPreferences, EquipmentPreferences, PositioningPreferences } from '../lib/types'
+import type { Consultant, DrugPreferences, EquipmentPreferences, PositioningPreferences, RegionalPreferences } from '../lib/types'
 
 export default function CardEdit() {
   const { id } = useParams<{ id: string }>()
@@ -30,6 +30,7 @@ export default function CardEdit() {
   const [infusions, setInfusions] = useState('')
   const [analgesics, setAnalgesics] = useState('')
   const [antiemetics, setAntiemetics] = useState('')
+  const [antibiotics, setAntibiotics] = useState('')
   const [drugsOther, setDrugsOther] = useState('')
 
   // Equipment
@@ -46,6 +47,9 @@ export default function CardEdit() {
   const [catheter, setCatheter] = useState('')
   const [ngt, setNgt] = useState('')
   const [positioningOther, setPositioningOther] = useState('')
+
+  // Regional anaesthesia
+  const [regionalDetails, setRegionalDetails] = useState('')
 
   const loadConsultant = useCallback(async (cId: string) => {
     const { data } = await supabase
@@ -84,6 +88,7 @@ export default function CardEdit() {
       setInfusions(drugs.infusions?.join('\n') || '')
       setAnalgesics(drugs.analgesics || '')
       setAntiemetics(drugs.antiemetics || '')
+      setAntibiotics(drugs.antibiotics || '')
       setDrugsOther(drugs.other || '')
 
       const equipment = cardData.equipment || {}
@@ -100,6 +105,9 @@ export default function CardEdit() {
       setCatheter(positioning.catheter || '')
       setNgt(positioning.ngt || '')
       setPositioningOther(positioning.other || '')
+
+      const regional = cardData.regional || {}
+      setRegionalDetails(regional.details || '')
 
       const { data: consultantData } = await supabase
         .from('consultants')
@@ -137,6 +145,7 @@ export default function CardEdit() {
     if (infusions) drugs.infusions = infusions.split('\n').filter(Boolean)
     if (analgesics) drugs.analgesics = analgesics
     if (antiemetics) drugs.antiemetics = antiemetics
+    if (antibiotics) drugs.antibiotics = antibiotics
     if (drugsOther) drugs.other = drugsOther
 
     const equipment: EquipmentPreferences = {}
@@ -154,6 +163,9 @@ export default function CardEdit() {
     if (ngt) positioning.ngt = ngt
     if (positioningOther) positioning.other = positioningOther
 
+    const regional: RegionalPreferences = {}
+    if (regionalDetails) regional.details = regionalDetails
+
     const cardData = {
       consultant_id: consultant.id,
       procedure_name: procedureName,
@@ -161,6 +173,7 @@ export default function CardEdit() {
       drugs,
       equipment,
       positioning,
+      regional,
       notes: notes || null,
       last_edited_by: user.id,
     }
@@ -329,6 +342,16 @@ export default function CardEdit() {
               />
             </div>
             <div>
+              <label className="label">Antibiotics</label>
+              <input
+                type="text"
+                value={antibiotics}
+                onChange={(e) => setAntibiotics(e.target.value)}
+                className="input"
+                placeholder="e.g., Co-amoxiclav 1.2g, Cefuroxime 1.5g"
+              />
+            </div>
+            <div>
               <label className="label">Other Drugs</label>
               <input
                 type="text"
@@ -461,6 +484,20 @@ export default function CardEdit() {
                 placeholder="Any other positioning or prep requirements"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Regional anaesthesia */}
+        <div className="card">
+          <h2 className="font-semibold mb-4">Regional Anaesthesia</h2>
+          <div>
+            <label className="label">Plan / Block</label>
+            <textarea
+              value={regionalDetails}
+              onChange={(e) => setRegionalDetails(e.target.value)}
+              className="input min-h-[80px]"
+              placeholder="e.g., Spinal L3/4 0.5% heavy bupivacaine 2.5ml, Femoral catheter"
+            />
           </div>
         </div>
 
